@@ -62,6 +62,35 @@ const evidenceList =
         "evidenceList"
     );
 
+const analysisModal =
+    document.getElementById(
+        "analysisModal"
+    );
+
+
+const closeAnalysisModalButton =
+    document.getElementById(
+        "closeAnalysisModalButton"
+    );
+
+
+const cancelAnalysisButton =
+    document.getElementById(
+        "cancelAnalysisButton"
+    );
+
+
+const confirmAnalysisButton =
+    document.getElementById(
+        "confirmAnalysisButton"
+    );
+
+
+const deepAnalysisCheckbox =
+    document.getElementById(
+        "deepAnalysisCheckbox"
+    );
+
 
 let selectedEvidence = null;
 
@@ -75,9 +104,49 @@ let pollingInterval = null;
 
 analyzeButton.addEventListener(
     "click",
-    startAnalysis
+    openAnalysisModal
 );
 
+function openAnalysisModal() {
+
+    deepAnalysisCheckbox.checked =
+        false;
+
+
+    analysisModal.classList.add(
+        "visible"
+    );
+}
+
+
+function closeAnalysisModal() {
+
+    analysisModal.classList.remove(
+        "visible"
+    );
+}
+
+closeAnalysisModalButton.addEventListener(
+    "click",
+    closeAnalysisModal
+);
+
+
+cancelAnalysisButton.addEventListener(
+    "click",
+    closeAnalysisModal
+);
+
+
+confirmAnalysisButton.addEventListener(
+    "click",
+    async () => {
+
+        closeAnalysisModal();
+
+        await startAnalysis();
+    }
+);
 
 async function startAnalysis() {
 
@@ -87,11 +156,25 @@ async function startAnalysis() {
         "block";
 
 
+    const deepAnalysis =
+        deepAnalysisCheckbox.checked;
+
+
     const response =
         await fetch(
             "/api/analyze",
             {
-                method: "POST"
+                method: "POST",
+
+                headers: {
+                    "Content-Type":
+                        "application/json"
+                },
+
+                body: JSON.stringify({
+                    deep_analysis:
+                        deepAnalysis
+                })
             }
         );
 
@@ -923,6 +1006,9 @@ function renderExecutable(
     const pe =
         executable.pe;
 
+    const signature =
+        executable.signature;
+
 
     return `
 
@@ -1015,6 +1101,92 @@ function renderExecutable(
                 </div>
             `
         }
+
+
+        <div class="detail-section">
+
+            <h3>
+                Digital Signature
+            </h3>
+
+            ${
+                signature
+
+                ? `
+
+                    ${detailRow(
+                        "Status",
+                        escapeHtml(
+                            signature.status ||
+                            "Unknown"
+                        )
+                    )}
+
+
+                    ${detailRow(
+                        "Signature Type",
+                        escapeHtml(
+                            signature.signature_type ||
+                            "Unknown"
+                        )
+                    )}
+
+
+                    ${detailRow(
+                        "Subject",
+                        escapeHtml(
+                            signature.subject ||
+                            "Unavailable"
+                        )
+                    )}
+
+
+                    ${detailRow(
+                        "Issuer",
+                        escapeHtml(
+                            signature.issuer ||
+                            "Unavailable"
+                        )
+                    )}
+
+
+                    ${detailRow(
+                        "Thumbprint",
+                        escapeHtml(
+                            signature.thumbprint ||
+                            "Unavailable"
+                        )
+                    )}
+
+
+                    ${detailRow(
+                        "Valid From",
+                        escapeHtml(
+                            signature.valid_from ||
+                            "Unavailable"
+                        )
+                    )}
+
+
+                    ${detailRow(
+                        "Valid Until",
+                        escapeHtml(
+                            signature.valid_until ||
+                            "Unavailable"
+                        )
+                    )}
+
+                `
+
+                : `
+                    <div class="subtitle">
+                        Digital signature data unavailable.
+                        Run a Full Endpoint Analysis to collect it.
+                    </div>
+                `
+            }
+
+        </div>
 
     `;
 }

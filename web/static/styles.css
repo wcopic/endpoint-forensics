@@ -532,3 +532,71 @@ button:disabled {
     margin-top: 20px;
 }
 
+.analysis-confirmation {
+    padding: 16px;
+
+    background: #171a21;
+
+    border:
+        1px solid #272b34;
+
+    border-radius: 8px;
+
+    margin-bottom: 16px;
+}
+
+
+.analysis-confirmation p {
+    margin-top: 0;
+
+    margin-bottom: 8px;
+
+    font-weight: bold;
+}
+
+
+.analysis-option {
+    display: flex;
+
+    gap: 14px;
+
+    align-items: flex-start;
+
+    padding: 16px;
+
+    border:
+        1px solid #2d2d2d;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+
+
+.analysis-option:hover {
+    background:
+        rgba(255, 255, 255, 0.04);
+
+    border-color: #555;
+}
+
+
+.analysis-option input {
+    margin-top: 3px;
+
+    width: 18px;
+    height: 18px;
+
+    cursor: pointer;
+}
+
+
+.analysis-option-title {
+    font-weight: bold;
+
+    margin-bottom: 4px;
+}

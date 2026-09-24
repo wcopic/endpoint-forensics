@@ -1,5 +1,6 @@
 from pathlib import Path
 from threading import Lock, Thread
+from pydantic import BaseModel
 
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI, HTTPException
@@ -15,6 +16,9 @@ from analysis.process_tree import (
     get_process_ancestors
 )
 
+
+class AnalysisRequest(BaseModel):
+    deep_analysis: bool = False
 
 app = FastAPI(
     title="Endpoint Forensics"
@@ -112,14 +116,15 @@ def update_progress(
         STATE["progress"] = progress
 
 
-def run_analysis():
+def run_analysis(deep_analysis=False):
 
     global CURRENT_SNAPSHOT
 
     try:
 
         snapshot = capture_snapshot(
-            progress_callback=update_progress
+            progress_callback=update_progress,
+            deep_analysis=deep_analysis
         )
 
 
@@ -148,10 +153,9 @@ def run_analysis():
 
 
 @app.post("/api/analyze")
-def start_analysis():
+def start_analysis(request: AnalysisRequest):
 
     global CURRENT_SNAPSHOT
-
 
     with STATE_LOCK:
 
@@ -186,9 +190,11 @@ def start_analysis():
 
     Thread(
         target=run_analysis,
+        args=(
+            request.deep_analysis,
+        ),
         daemon=True
     ).start()
-
 
     return {
         "status": "started"

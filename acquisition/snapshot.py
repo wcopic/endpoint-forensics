@@ -5,6 +5,8 @@ from pathlib import Path
 from collectors.system import collect_system_info
 from collectors.processes import collect_processes
 from collectors.executables import collect_executables
+from collectors.signatures import collect_signatures
+from collectors.modules import collect_loaded_modules
 
 from analysis.process_tree import build_process_tree
 from analysis.pe import analyze_pe
@@ -39,7 +41,8 @@ def save_json(path, data):
         )
 
 
-def capture_snapshot(progress_callback=None):
+def capture_snapshot(progress_callback=None, deep_analysis=False):
+    
     import time
 
     def progress(stage, percentage):
@@ -76,14 +79,104 @@ def capture_snapshot(progress_callback=None):
     executables = collect_executables(processes)
     print(f"[TIMING] Executables + SHA-256: {time.perf_counter() - start:.3f}s")
 
-    # PE analysis
+# PE analysis
     start = time.perf_counter()
-    progress("Analyzing PE files", 70)
+
+    progress(
+        "Analyzing PE files",
+        70
+    )
 
     for executable in executables:
-        executable["pe"] = analyze_pe(executable["path"])
+        executable["pe"] = analyze_pe(
+            executable["path"]
+        )
 
-    print(f"[TIMING] PE analysis: {time.perf_counter() - start:.3f}s")
+    print(
+        f"[TIMING] PE analysis: "
+        f"{time.perf_counter() - start:.3f}s"
+    )
+
+
+    # Digital signatures
+    if deep_analysis:
+
+        start = time.perf_counter()
+
+        progress(
+            "Analyzing digital signatures",
+            80
+        )
+
+        signatures = collect_signatures(
+            executables
+        )
+
+        for executable in executables:
+
+            path = executable.get(
+                "path"
+            )
+
+            if not path:
+                continue
+
+            executable["signature"] = (
+                signatures.get(
+                    path.lower()
+                )
+            )
+
+        print(
+            f"[TIMING] Digital signatures: "
+            f"{time.perf_counter() - start:.3f}s"
+        )
+
+    module_records = []
+
+    # Loaded modules / DLLs
+    if deep_analysis:
+
+        start = time.perf_counter()
+
+        progress(
+            "Collecting loaded modules",
+            87
+        )
+
+        modules = collect_loaded_modules(
+            processes
+        )
+
+        for process in processes:
+
+            pid = process.get("pid")
+
+            if pid is None:
+                continue
+
+
+            module_records.append({
+                "pid":
+                    pid,
+
+                "create_time":
+                    process.get(
+                        "create_time"
+                    ),
+
+                "modules":
+                    modules.get(
+                        pid,
+                        []
+                    )
+            })
+
+        print(
+            f"[TIMING] Loaded modules: "
+            f"{time.perf_counter() - start:.3f}s"
+        )
+
 
     # Saving
     start = time.perf_counter()
@@ -92,6 +185,13 @@ def capture_snapshot(progress_callback=None):
     save_json(evidence_path / "system.json", system_info)
     save_json(evidence_path / "processes.json", processes)
     save_json(evidence_path / "executables.json", executables)
+    
+    if deep_analysis:
+
+        save_json(
+            evidence_path / "modules.json",
+            module_records
+        )
 
     print(f"[TIMING] Saving evidence: {time.perf_counter() - start:.3f}s")
 
@@ -108,6 +208,15 @@ def capture_snapshot(progress_callback=None):
     print(f"[TIMING] TOTAL: {total_time:.3f}s")
     print(f"[TIMING] =============================")
 
+    module_map = {
+        (
+            record["pid"],
+            record["create_time"]
+        ): record["modules"]
+
+        for record in module_records
+    }
+    
     return {
         "evidence_path": str(evidence_path),
         "captured_at": captured_at,
@@ -116,7 +225,9 @@ def capture_snapshot(progress_callback=None):
         "executables": executables,
         "process_map": process_map,
         "children": children,
-        "executable_map": executable_map
+        "executable_map": executable_map,
+        "modules": module_records,
+        "module_map": module_map
     }
 
 def load_snapshot(evidence_path):
@@ -125,6 +236,7 @@ def load_snapshot(evidence_path):
     system_path = evidence_path / "system.json"
     processes_path = evidence_path / "processes.json"
     executables_path = evidence_path / "executables.json"
+    modules_path = evidence_path / "modules.json"
 
     if not (
         system_path.exists()
@@ -158,6 +270,32 @@ def load_snapshot(evidence_path):
         for executable in executables
     }
 
+    module_records = []
+    module_map = {}
+
+
+    if modules_path.exists():
+
+        with open(
+            modules_path,
+            "r",
+            encoding="utf-8"
+        ) as file:
+
+            module_records = json.load(
+                file
+            )
+
+
+        module_map = {
+            (
+                record["pid"],
+                record["create_time"]
+            ): record["modules"]
+
+            for record in module_records
+        }
+
     return {
         "evidence_path": str(evidence_path),
         "captured_at": captured_at,
@@ -166,5 +304,7 @@ def load_snapshot(evidence_path):
         "executables": executables,
         "process_map": process_map,
         "children": children,
-        "executable_map": executable_map
+        "executable_map": executable_map,
+        "modules": module_records,
+        "module_map": module_map
     }
