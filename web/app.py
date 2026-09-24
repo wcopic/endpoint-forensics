@@ -223,6 +223,10 @@ def get_processes():
                 CURRENT_SNAPSHOT[
                     "executables"
                 ]
+            ),
+        "captured_at":
+            CURRENT_SNAPSHOT.get(
+                "captured_at"
             )
     }
 

@@ -60,6 +60,13 @@ def capture_snapshot(progress_callback=None):
     start = time.perf_counter()
     progress("Collecting running processes", 20)
     processes = collect_processes()
+
+    captured_at = (
+        processes[0].get("observed_at")
+        if processes
+        else datetime.now().astimezone().isoformat()
+    )
+    
     process_map, children = build_process_tree(processes)
     print(f"[TIMING] Processes: {time.perf_counter() - start:.3f}s")
 
@@ -103,7 +110,7 @@ def capture_snapshot(progress_callback=None):
 
     return {
         "evidence_path": str(evidence_path),
-        "captured_at": datetime.now().astimezone().isoformat(),
+        "captured_at": captured_at,
         "system": system_info,
         "processes": processes,
         "executables": executables,
@@ -134,6 +141,13 @@ def load_snapshot(evidence_path):
     with open(processes_path, "r", encoding="utf-8") as file:
         processes = json.load(file)
 
+    captured_at = None
+
+    if processes:
+        captured_at = processes[0].get(
+            "observed_at"
+        )
+
     with open(executables_path, "r", encoding="utf-8") as file:
         executables = json.load(file)
 
@@ -146,6 +160,7 @@ def load_snapshot(evidence_path):
 
     return {
         "evidence_path": str(evidence_path),
+        "captured_at": captured_at,
         "system": system_info,
         "processes": processes,
         "executables": executables,

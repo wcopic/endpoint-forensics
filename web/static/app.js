@@ -344,12 +344,6 @@ async function importSelectedEvidence() {
         await loadProcesses();
 
 
-        document.getElementById(
-            "snapshotTime"
-        ).textContent =
-            selectedEvidence;
-
-
     } catch (error) {
 
         console.error(error);
@@ -488,11 +482,24 @@ async function loadProcesses() {
         data.executable_count;
 
 
-    document.getElementById(
-        "snapshotTime"
-    ).textContent =
-        new Date()
-            .toLocaleTimeString();
+    const snapshotTime =
+        document.getElementById(
+            "snapshotTime"
+        );
+
+
+    if (data.captured_at) {
+
+        snapshotTime.textContent =
+            new Date(
+                data.captured_at
+            ).toLocaleString();
+
+    } else {
+
+        snapshotTime.textContent =
+            "Unknown";
+    }
 
 
     const list =
