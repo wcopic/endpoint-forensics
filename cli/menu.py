@@ -10,7 +10,7 @@ def show_menu():
     return input("\nSelect an option: ").strip()
 
 
-def display_process_details(details):
+def display_process_details(details, ancestors):
     process = details["process"]
     parent = details["parent"]
     children = details["children"]
@@ -26,6 +26,11 @@ def display_process_details(details):
     print(f"User:        {process['username']}")
     print(f"Created:     {process['create_time']}")
 
+    print(f"Observed:     {process['observed_at']}")  
+
+    print(f"Command line: {process['command_line']}")
+    
+
     print("\nParent:")
 
     if parent:
@@ -33,10 +38,24 @@ def display_process_details(details):
     else:
         print("  Not present in snapshot")
 
+    print("\nAncestors:")
+
+    if ancestors[2:]:
+        for ancestor in ancestors[2:]:
+            print(
+                f"  ↑ {ancestor['name']} "
+                f"(PID: {ancestor['pid']})"
+            )
+    else:
+        print("  None")
+
     print("\nChildren:")
 
     if children:
         for child in children:
-            print(f"  └── {child['name']} (PID: {child['pid']})")
+            print(
+                f"  └── {child['name']} "
+                f"(PID: {child['pid']})"
+            )
     else:
         print("  None")

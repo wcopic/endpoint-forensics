@@ -1,0 +1,534 @@
+* {
+    box-sizing: border-box;
+}
+
+
+body {
+    margin: 0;
+
+    font-family:
+        Arial,
+        sans-serif;
+
+    background: #0f1115;
+
+    color: #e8eaed;
+}
+
+
+.container {
+    max-width: 1100px;
+
+    margin: 0 auto;
+
+    padding: 40px 24px;
+}
+
+
+header {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    margin-bottom: 35px;
+}
+
+
+h1 {
+    margin: 0;
+
+    font-size: 28px;
+}
+
+
+h2 {
+    margin-top: 0;
+}
+
+
+h3 {
+    font-size: 15px;
+
+    margin-bottom: 12px;
+}
+
+
+.subtitle {
+    margin-top: 6px;
+
+    color: #9298a3;
+
+    font-size: 14px;
+}
+
+
+button {
+    border: none;
+
+    border-radius: 8px;
+
+    padding: 12px 18px;
+
+    background: #e8eaed;
+
+    color: #111318;
+
+    font-weight: bold;
+
+    cursor: pointer;
+}
+
+
+button:hover {
+    opacity: 0.9;
+}
+
+
+button:disabled {
+    opacity: 0.5;
+
+    cursor: not-allowed;
+}
+
+
+/* -------------------------
+   Statistics
+------------------------- */
+
+
+.stats {
+    display: grid;
+
+    grid-template-columns:
+        repeat(3, 1fr);
+
+    gap: 16px;
+
+    margin-bottom: 25px;
+}
+
+
+.card {
+    background: #171a21;
+
+    border: 1px solid #272b34;
+
+    border-radius: 12px;
+
+    padding: 20px;
+}
+
+
+.stat-label {
+    color: #9298a3;
+
+    font-size: 13px;
+}
+
+
+.stat-value {
+    margin-top: 8px;
+
+    font-size: 28px;
+
+    font-weight: bold;
+}
+
+
+.snapshot-value {
+    font-size: 18px;
+}
+
+
+/* -------------------------
+   Progress
+------------------------- */
+
+
+.progress-container {
+    display: none;
+
+    margin-bottom: 25px;
+}
+
+
+.progress-header {
+    display: flex;
+
+    justify-content: space-between;
+
+    margin-bottom: 8px;
+
+    font-size: 13px;
+}
+
+
+.progress-bar {
+    width: 100%;
+
+    height: 8px;
+
+    background: #272b34;
+
+    border-radius: 10px;
+
+    overflow: hidden;
+}
+
+
+.progress {
+    width: 0%;
+
+    height: 100%;
+
+    background: #e8eaed;
+
+    transition:
+        width 0.3s ease;
+}
+
+
+/* -------------------------
+   Process list
+------------------------- */
+
+
+.process-list {
+    margin-top: 20px;
+}
+
+
+.process {
+    display: grid;
+
+    grid-template-columns:
+        80px 1fr 180px;
+
+    gap: 15px;
+
+    align-items: center;
+
+    padding: 15px;
+
+    border-bottom:
+        1px solid #272b34;
+
+    cursor: pointer;
+}
+
+
+.process:hover {
+    background: #1c2028;
+}
+
+
+.process.selected {
+    background: #1c2028;
+
+    border-left:
+        3px solid #e8eaed;
+}
+
+
+.pid {
+    color: #9298a3;
+
+    font-family: monospace;
+}
+
+
+.process-name {
+    font-weight: bold;
+}
+
+
+.user {
+    color: #9298a3;
+
+    font-size: 13px;
+}
+
+
+/* -------------------------
+   Inline process details
+------------------------- */
+
+
+.process-details-inline {
+    padding: 25px;
+
+    background: #13161c;
+
+    border-bottom:
+        1px solid #272b34;
+}
+
+
+.detail-section {
+    margin-bottom: 28px;
+}
+
+
+.detail-row {
+    display: grid;
+
+    grid-template-columns:
+        180px 1fr;
+
+    padding: 12px 0;
+
+    border-bottom:
+        1px solid #272b34;
+}
+
+
+.detail-label {
+    color: #9298a3;
+}
+
+
+.detail-value {
+    word-break: break-all;
+
+    font-family: monospace;
+}
+
+
+/* -------------------------
+   Parent / children
+------------------------- */
+
+
+.related-process {
+    display: flex;
+
+    justify-content: space-between;
+
+    align-items: center;
+
+    padding: 12px 15px;
+
+    background: #171a21;
+
+    border:
+        1px solid #272b34;
+
+    border-radius: 8px;
+
+    margin-bottom: 8px;
+}
+
+
+.follow-button {
+    padding: 7px 12px;
+
+    background: transparent;
+
+    color: #e8eaed;
+
+    border:
+        1px solid #444a55;
+
+    border-radius: 6px;
+
+    font-size: 12px;
+}
+
+
+.follow-button:hover {
+    background: #272b34;
+}
+
+
+/* -------------------------
+   Command line
+------------------------- */
+
+
+.command-line {
+    margin: 0;
+
+    padding: 16px;
+
+    background: #0b0d11;
+
+    border:
+        1px solid #272b34;
+
+    border-radius: 8px;
+
+    overflow-x: auto;
+
+    color: #d7dae0;
+
+    font-family:
+        Consolas,
+        "Courier New",
+        monospace;
+
+    font-size: 13px;
+
+    line-height: 1.5;
+
+    white-space: pre-wrap;
+
+    word-break: break-word;
+}
+
+
+/* -------------------------
+   Mobile
+------------------------- */
+
+
+@media (max-width: 700px) {
+
+    .stats {
+        grid-template-columns: 1fr;
+    }
+
+
+    .process {
+        grid-template-columns:
+            60px 1fr;
+    }
+
+
+    .process .user {
+        display: none;
+    }
+
+
+    .detail-row {
+        grid-template-columns: 1fr;
+
+        gap: 5px;
+    }
+
+}
+
+.header-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+
+.secondary-button {
+    background: white;
+    border: 1px solid #444;
+}
+
+
+.modal {
+    position: fixed;
+    inset: 0;
+
+    display: none;
+
+    align-items: center;
+    justify-content: center;
+
+    background: rgba(0, 0, 0, 0.65);
+
+    z-index: 1000;
+}
+
+
+.modal.visible {
+    display: flex;
+}
+
+
+.modal-content {
+    width: 520px;
+    max-width: calc(100vw - 40px);
+
+    background: #111;
+
+    border: 1px solid #333;
+    border-radius: 12px;
+
+    padding: 24px;
+
+    box-shadow:
+        0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    margin-bottom: 20px;
+}
+
+
+.close-button {
+    background: transparent;
+    border: none;
+
+    font-size: 28px;
+    line-height: 1;
+
+    padding: 4px 8px;
+
+    cursor: pointer;
+}
+
+
+.evidence-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 8px;
+
+    max-height: 320px;
+
+    overflow-y: auto;
+}
+
+
+.evidence-item {
+    display: flex;
+
+    align-items: center;
+
+    padding: 14px;
+
+    border: 1px solid #2d2d2d;
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    transition:
+        background 0.15s,
+        border-color 0.15s;
+}
+
+
+.evidence-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+
+.evidence-item.selected {
+    border-color: #888;
+
+    background: rgba(255, 255, 255, 0.07);
+}
+
+
+.modal-footer {
+    display: flex;
+
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    margin-top: 20px;
+}
+

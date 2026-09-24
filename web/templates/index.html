@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Endpoint Forensics</title>
+
+    <link
+        rel="stylesheet"
+        href="/static/styles.css"
+    >
+
+</head>
+
+
+<body>
+
+<div class="container">
+
+
+<header>
+
+    <div>
+
+        <h1>
+            Endpoint Forensics
+        </h1>
+
+        <div class="subtitle">
+            Local Windows endpoint investigation
+        </div>
+
+    </div>
+
+
+    <div class="header-actions">
+
+        <button
+            id="importButton"
+            class="secondary-button"
+        >
+            Import Evidence
+        </button>
+
+
+        <button id="analyzeButton">
+            Analyze Endpoint
+        </button>
+
+    </div>
+
+</header>
+```
+
+
+
+    <div
+        id="progressContainer"
+        class="progress-container"
+    >
+
+        <div class="progress-header">
+
+            <span id="progressStage">
+                Preparing...
+            </span>
+
+            <span id="progressPercent">
+                0%
+            </span>
+
+        </div>
+
+
+        <div class="progress-bar">
+
+            <div
+                id="progress"
+                class="progress"
+            ></div>
+
+        </div>
+
+    </div>
+
+
+    <div class="stats">
+
+        <div class="card">
+
+            <div class="stat-label">
+                Processes
+            </div>
+
+            <div
+                id="processCount"
+                class="stat-value"
+            >
+                —
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="stat-label">
+                Executables
+            </div>
+
+            <div
+                id="executableCount"
+                class="stat-value"
+            >
+                —
+            </div>
+
+        </div>
+
+
+        <div class="card">
+
+            <div class="stat-label">
+                Snapshot
+            </div>
+
+            <div
+                id="snapshotTime"
+                class="stat-value snapshot-value"
+            >
+                —
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <div class="card">
+
+        <h2>
+            Processes
+        </h2>
+
+
+        <div
+            id="processList"
+            class="process-list"
+        >
+
+            <div class="subtitle">
+                Run an analysis to collect endpoint evidence.
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+```html
+<div
+    id="evidenceModal"
+    class="modal"
+>
+
+    <div class="modal-content">
+
+        <div class="modal-header">
+
+            <div>
+
+                <h2>
+                    Import Evidence
+                </h2>
+
+                <div class="subtitle">
+                    Select a previous endpoint snapshot
+                </div>
+
+            </div>
+
+
+            <button
+                id="closeModalButton"
+                class="close-button"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div
+            id="evidenceList"
+            class="evidence-list"
+        >
+
+            <div class="subtitle">
+                Loading evidence...
+            </div>
+
+        </div>
+
+
+        <div class="modal-footer">
+
+            <button
+                id="cancelImportButton"
+                class="secondary-button"
+            >
+                Cancel
+            </button>
+
+
+            <button
+                id="confirmImportButton"
+                disabled
+            >
+                Import
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+
+<script src="/static/app.js"></script>
+
+</body>
+
+</html>

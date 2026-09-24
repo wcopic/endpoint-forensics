@@ -5,10 +5,14 @@ from pathlib import Path
 from collectors.system import collect_system_info
 from collectors.processes import collect_processes
 
+from collectors.executables import collect_executables
+from analysis.pe import analyze_pe
+
 from analysis.process_tree import (
     build_process_tree,
     print_process_tree,
-    get_process_details
+    get_process_details,
+    get_process_ancestors
 )
 
 from cli.menu import (
@@ -39,6 +43,20 @@ def main():
     processes = collect_processes()
 
     process_map, children = build_process_tree(processes)
+
+    executables = collect_executables(processes)
+
+    for executable in executables:
+        executable["pe"] = analyze_pe(
+            executable["path"]
+        )
+
+    with open(
+        evidence_path / "executables.json",
+        "w",
+        encoding="utf-8"
+    ) as file:
+        json.dump(executables, file, indent=4)
 
     # Save system information
     with open(
@@ -111,7 +129,15 @@ def main():
                 )
                 continue
 
-            display_process_details(details)
+            ancestors = get_process_ancestors(
+                pid,
+                process_map
+            )
+
+            display_process_details(
+                details,
+                ancestors
+            )
 
         elif option == "0":
             print("\nExiting...")
