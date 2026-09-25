@@ -244,32 +244,41 @@ git clone https://github.com/wcopic/endpoint-forensics.git
 cd endpoint-forensics
 ```
 
-Create a virtual environment:
+### Windows PowerShell
 
-```bash
+From the repository root, create and activate a virtual environment:
+
+```powershell
 python -m venv venv
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-Activate it on Windows:
+If PowerShell says that running scripts is disabled, allow locally created scripts for **this terminal session only**, then activate the environment again:
 
-```bash
-venv\Scripts\activate
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
+.\venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+### Windows Command Prompt (CMD)
 
-```bash
-pip install -r requirements.txt
+If you use CMD instead of PowerShell, activate the environment with:
+
+```bat
+venv\Scripts\activate.bat
 ```
+
+Then install dependencies with `python -m pip install -r requirements.txt`.
 
 ---
 
 ## Running the Application
 
-Start the FastAPI server:
+Start the FastAPI server from the repository root:
 
-```bash
-uvicorn web.app:app --reload
+```powershell
+python -m uvicorn web.app:app --reload
 ```
 
 Then open:
