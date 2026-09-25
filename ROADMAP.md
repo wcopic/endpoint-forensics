@@ -26,7 +26,7 @@ The project should remain:
 * JSON evidence snapshots
 * CLI interface
 
-### v0.0.2 — Process Intelligence
+### v0.0.2 — Process Intelligence ✅
 
 * Process ancestry
 * Better timestamps and process lifetime
@@ -34,7 +34,7 @@ The project should remain:
 * Process sessions and security context
 * More detailed process metadata
 
-### v0.0.3 — Executable Analysis
+### v0.0.3 — Executable Analysis ✅
 
 * File size and timestamps
 * SHA-256 hashes
@@ -89,7 +89,7 @@ The project should remain:
 * Investigation context
 * Evidence-based findings
 
-### v0.1.0 — Local Web Dashboard 🚀
+### v0.1.0 — Complete Local Web Dashboard 🚀
 
 * Localhost web interface
 * Process explorer
@@ -101,6 +101,10 @@ The project should remain:
 * Timeline
 * Findings and investigation summaries
 
+### v0.2.0 — Machine Learning Model 
+
+* (Long term goal - TBD)
+  
 ---
 
 ## Long-Term Goal
