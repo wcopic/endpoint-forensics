@@ -1,394 +1,174 @@
 # Endpoint Forensics
 
-A local-first Windows endpoint investigation and forensic collection tool designed to capture, inspect, and correlate process and executable evidence through a lightweight web interface.
+A local Windows endpoint evidence collection and investigation project built with Python, FastAPI, and a localhost dashboard.
 
-The project focuses on building a transparent DFIR-style workflow: **collect evidence first, analyze context second, and avoid treating individual indicators as definitive proof of malicious activity.**
+The current implementation captures snapshots of processes and executable files. Extended acquisition adds Authenticode results and memory-mapped file paths. **It does not detect malware, assign severity, or correlate behavioral events yet.**
 
----
+## Requirements
 
-## Overview
+- Windows for supported endpoint acquisition
+- Python **3.10 or later**; current regression tests were run with Python 3.12
+- Git to clone the repository
+- Windows PowerShell available as **`powershell.exe`** for Authenticode collection
 
-Endpoint Forensics collects information from a Windows system and organizes it into reusable evidence snapshots.
+PowerShell 7 (`pwsh`) can be used as your terminal, but the signature collector explicitly invokes Windows PowerShell. CMD is also supported.
 
-The application currently supports two acquisition modes:
+Acquisition is best effort. Running from an elevated terminal can improve access to process metadata and memory maps; protected or terminated processes can remain unavailable. Elevation is not required to launch the dashboard.
 
-### Quick Analysis
+## Installation and execution — PowerShell
 
-Designed for fast endpoint inspection.
-
-Collects:
-
-- System information
-- Running processes
-- PID / PPID relationships
-- Process ancestry
-- Process creation timestamps
-- Command-line arguments
-- Executable paths
-- File metadata
-- SHA-256 hashes
-- Basic PE information
-
-Typical execution time on the development system: **~4–5 seconds**.
-
-### Full Endpoint Analysis
-
-Extends the normal snapshot with additional security-related evidence.
-
-Currently collects:
-
-- Everything included in Quick Analysis
-- Authenticode digital signature status
-- Signer certificate information
-- Certificate issuer
-- Certificate thumbprint
-- Certificate validity period
-- Loaded modules / DLLs per process
-
-Typical execution time on the development system: **~10–15 seconds**.
-
-Additional behavioral indicators and correlation capabilities are planned for future versions.
-
----
-
-## Web Interface
-
-Endpoint Forensics includes a local FastAPI-based dashboard that allows the investigator to:
-
-- Start a new endpoint analysis
-- Choose between Quick and Full analysis modes
-- Import previous evidence snapshots
-- Browse running processes
-- Inspect executable metadata
-- Navigate parent and child process relationships
-- Review command-line execution
-- Inspect PE metadata
-- Review digital signature and certificate information
-
-The interface runs entirely on:
-
-```text
-localhost
-```
-
-No endpoint information is intentionally transmitted to an external service.
-
----
-
-## Evidence Collection
-
-Each analysis creates a timestamped evidence directory:
-
-```text
-evidence/
-└── YYYY-MM-DD_HH-MM-SS/
-    ├── system.json
-    ├── processes.json
-    ├── executables.json
-    └── modules.json
-```
-
-`modules.json` is generated only during Full Endpoint Analysis.
-
-Evidence snapshots can later be reloaded directly from the web interface.
-
----
-
-## Process Relationships
-
-Processes are indexed using in-memory mappings for fast lookup.
-
-The application maintains structures similar to:
-
-```text
-PID → Process
-
-Parent PID → Child Processes
-```
-
-This allows near constant-time lookup of processes and efficient traversal of:
-
-```text
-Process
-├── Parent
-│   └── Grandparent
-│       └── ...
-│
-└── Children
-    └── Descendants
-```
-
-For evidence that may span longer periods of time, process identity is also associated with creation timestamps because Windows may reuse process IDs.
-
----
-
-## Executable Intelligence
-
-For unique executables discovered during acquisition, Endpoint Forensics currently collects:
-
-```text
-Executable
-├── Path
-├── File name
-├── File size
-├── Creation time
-├── Modification time
-├── Access time
-├── SHA-256
-│
-├── PE Metadata
-│   ├── Architecture
-│   ├── Subsystem
-│   ├── Entry Point
-│   └── Image Base
-│
-└── Digital Signature
-    ├── Status
-    ├── Signature Type
-    ├── Subject
-    ├── Issuer
-    ├── Thumbprint
-    ├── Valid From
-    └── Valid Until
-```
-
-PE parsing uses lightweight header analysis during acquisition to reduce collection time while preserving the metadata currently required by the project.
-
----
-
-## Loaded Modules
-
-Full Endpoint Analysis also collects memory-mapped modules for running processes.
-
-Example:
-
-```text
-Process
-└── Loaded Modules
-    ├── ntdll.dll
-    ├── kernel32.dll
-    ├── kernelbase.dll
-    └── ...
-```
-
-Module evidence is associated with the process PID and creation time.
-
-This will later allow the analysis layer to identify contextual signals such as modules loaded from unusual or user-writable locations.
-
----
-
-## Architecture
-
-The project separates evidence collection from analysis logic.
-
-```text
-endpoint-forensics/
-│
-├── acquisition/
-│   └── Snapshot orchestration and evidence persistence
-│
-├── collectors/
-│   ├── System information
-│   ├── Processes
-│   ├── Executables
-│   ├── Digital signatures
-│   └── Loaded modules
-│
-├── analysis/
-│   ├── Process relationships
-│   └── PE analysis
-│
-├── web/
-│   ├── FastAPI backend
-│   ├── Web interface
-│   └── Static assets
-│
-├── evidence/
-│   └── Local evidence snapshots
-│
-└── main.py
-```
-
-The general design principle is:
-
-```text
-Collectors
-    ↓
-Raw Evidence
-    ↓
-Analysis
-    ↓
-Indicators
-    ↓
-Correlation
-    ↓
-Findings
-```
-
-An individual indicator should not automatically be treated as evidence of malware.
-
----
-
-## Installation
-
-### Requirements
-
-- Windows
-- Python 3
-- PowerShell
-
-Clone the repository:
-
-```bash
-git clone https://github.com/wcopic/endpoint-forensics.git
-cd endpoint-forensics
-```
-
-### Windows PowerShell
-
-From the repository root, create and activate a virtual environment:
+Run these commands from the directory where you want the repository:
 
 ```powershell
+git clone https://github.com/wcopic/endpoint-forensics.git
+cd endpoint-forensics
 python -m venv venv
-.\venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+.\venv\Scripts\python.exe -m pip install -r requirements.txt
+.\venv\Scripts\python.exe -m uvicorn web.app:app --host 127.0.0.1 --port 8000
 ```
 
-If PowerShell says that running scripts is disabled, allow locally created scripts for **this terminal session only**, then activate the environment again:
+Open **http://127.0.0.1:8000**. Stop the server with `Ctrl+C`. These commands use the environment's interpreter directly, so script activation and execution-policy changes are unnecessary. If `python` is unavailable but the Windows Python launcher is installed, use `py -3 -m venv venv` to create the environment.
+
+### Optional virtual environment activation
+
+In PowerShell:
+
+```powershell
+.\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+python -m uvicorn web.app:app --host 127.0.0.1 --port 8000
+```
+
+If activation is blocked by script execution policy, use the direct-interpreter commands above. Alternatively, where permitted, change policy for the current terminal session and then install dependencies:
 
 ```powershell
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned
 .\venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
 ```
 
-### Windows Command Prompt (CMD)
+Organization-managed policies may take precedence. A new terminal needs activation again if you use the activation workflow.
 
-If you use CMD instead of PowerShell, activate the environment with:
+In CMD, after creating the environment:
 
 ```bat
 venv\Scripts\activate.bat
+python -m pip install -r requirements.txt
+python -m uvicorn web.app:app --host 127.0.0.1 --port 8000
 ```
 
-Then install dependencies with `python -m pip install -r requirements.txt`.
-
----
-
-## Running the Application
-
-Start the FastAPI server from the repository root:
+### Development server
 
 ```powershell
-python -m uvicorn web.app:app --reload
+.\venv\Scripts\python.exe -m uvicorn web.app:app --host 127.0.0.1 --port 8000 --reload
 ```
 
-Then open:
+Use `--reload` only while developing. A reload or server shutdown can interrupt an acquisition. The server stores the active view and progress in memory; persisted snapshots can be loaded again. Use one server worker. Acquisition and evidence selection operate on the Windows machine running Python, not on another device visiting the page.
+
+## Acquisition modes
+
+| Evidence | Quick (checkbox unchecked) | Extended (checkbox checked) |
+| --- | --- | --- |
+| System information | Yes | Yes |
+| Processes: PID, PPID, name, path, username, creation time, command line, observation time | Yes, where accessible | Yes, where accessible |
+| Unique executable paths: file size, timestamps, SHA-256 | Yes, where accessible | Yes, where accessible |
+| Basic PE headers: machine code, subsystem, entry-point RVA, image base | Yes, where parseable | Yes, where parseable |
+| Authenticode status, signature type and signer certificate fields | Not requested | Best effort |
+| Process memory-mapped file paths | Not requested | Best effort, with process identity checks |
+
+The API retains the parameter name `deep_analysis` for compatibility. Extended acquisition replaces the earlier “Full Endpoint Analysis” label. It does not collect network traffic, registry activity, Windows events, or malware indicators.
+
+PE parsing uses `fast_load=True` and closes the PE object after reading headers. The architecture value is a hexadecimal PE machine identifier, not a human-readable CPU label. The entry point is an RVA, not an absolute virtual address.
+
+No reproducible Windows benchmark is currently published. Duration varies with process count, file access, file sizes, and Windows signature verification. Signature collection has a **120-second subprocess timeout**; the total acquisition can take longer. New snapshots include stage timings and elapsed time in `metadata.json`.
+
+## Dashboard
+
+1. Click **Analyze Endpoint** and choose Quick or Extended acquisition.
+2. Wait for completion; progress percentages represent stages, not an estimate of remaining time.
+3. Select a recorded process to inspect executable metadata, signatures and mapped files.
+4. Follow parent/child links within that snapshot.
+5. Review any partial-collection warnings and per-record statuses.
+
+The process list describes the saved observation, not a live-updating process monitor. Importing evidence is blocked while an acquisition is running. Reloading the page reconnects to a running acquisition on the same server.
+
+### Load existing evidence
+
+Each successful acquisition publishes a directory under the repository's `evidence/` folder, independent of the terminal's working directory:
 
 ```text
-http://127.0.0.1:8000
+evidence/<local-timestamp-with-microseconds>_<unique-id>/
+    system.json
+    processes.json
+    executables.json
+    metadata.json
+    modules.json       # Extended acquisition only
 ```
 
-From the dashboard you can either create a new endpoint analysis or load previously collected evidence.
+Signature records are embedded in `executables.json`; there is no separate signatures file. `metadata.json` includes the schema version, requested mode, acquisition start, process observation time, collection finish, timings, collector summaries and warnings. It is not an evidence integrity manifest.
 
----
+Use **Import Evidence** to select a directory already inside `evidence/`. This is a local folder selection, not a file-upload feature. To bring a snapshot from another installation, copy its entire directory into `evidence/` first. Use a folder name containing letters, digits, underscores, hyphens or dots, starting with a letter or digit.
 
-## Current Technology
+Older snapshots without `metadata.json` or `modules.json` remain loadable. Missing legacy metadata is shown as unknown, rather than assumed complete. At startup, the dashboard attempts to load the most recent valid snapshot by folder name. Hidden acquisition staging folders and folders missing required files are excluded from selection. Failed acquisitions do not publish a new snapshot.
 
-The project currently uses:
+### Interpret missing data correctly
 
-- Python
-- FastAPI
-- Uvicorn
-- psutil
-- pefile
-- PowerShell
-- HTML
-- CSS
-- JavaScript
+- `collection_status` distinguishes successful collection from partial results, access denial, terminated processes, reused PIDs, missing files, timeout and collector errors.
+- Authenticode `status` is a separate Windows verification result. `NotSigned` is an observed result; an unavailable or failed check is **not** evidence that a file is unsigned.
+- `Valid` is not a declaration that software is safe. Certificate dates describe the signer certificate, not a complete independent trust assessment.
+- An empty mapped-file list after a failed collection does not establish absence of loaded files.
+- Mapped paths can include executable images, DLLs and other mapped files. They are not restricted to DLLs; hashes, PE metadata and signatures for those paths are not collected yet.
+- Files and processes can change during acquisition. A snapshot is collected over an interval, not an atomic image of the operating system. Executable metadata, hashes and signatures are separate reads of the file on disk, not of the running image in memory.
 
----
+## Process relationships and identity
 
-## Roadmap
+Process lookups use a PID map within one snapshot. Parent-child links use PID/PPID, excluding PID 0 as a parent, self-parent links, and candidate parents created after the child. Ancestry traversal detects cycles.
 
-Planned areas of development include:
+These checks reject obvious PID reuse but do not prove a historical parent relationship when timestamps are unavailable. Historical ancestry and lifecycle correlation remain planned. Module acquisition compares the live process creation time with the recorded creation time both before and after reading memory maps. Unverifiable or changed identities are reported and their mapped paths are discarded.
 
-- Network connection collection
-- Process-to-network correlation
-- Deeper PE analysis
-- DLL and module intelligence
-- Digital signature analysis improvements
-- Registry persistence
-- Startup locations
-- Windows services
-- Scheduled tasks
-- Windows Event Logs
-- Sysmon integration
-- Process lifecycle tracking
-- Timeline generation
-- Behavioral indicators
-- LOLBin detection
-- Suspicious command-line analysis
-- Evidence correlation
-- Severity and confidence-based findings
-- Local investigation dashboard improvements
+## CLI
 
-The long-term goal is to move from simple endpoint enumeration toward an evidence-driven local investigation tool capable of explaining **why** activity may deserve further investigation.
+The CLI uses the same acquisition and persistence code as the dashboard:
 
----
-
-## Analysis Philosophy
-
-Endpoint Forensics does not aim to classify software as malicious based on a single signal.
-
-For example:
-
-```text
-Unsigned executable
-        +
-Execution from a user-writable directory
-        +
-Suspicious parent process
-        +
-Encoded PowerShell command
-        +
-Unexpected outbound connection
+```powershell
+.\venv\Scripts\python.exe main.py
+.\venv\Scripts\python.exe main.py --deep-analysis
+.\venv\Scripts\python.exe main.py --load .\evidence\<snapshot-folder>
 ```
 
-is significantly more useful than treating:
+`--deep-analysis` and `--load` are mutually exclusive. The interactive CLI displays the process tree and process details. Use the dashboard or JSON evidence files to inspect executable signatures and mapped-file records.
 
-```text
-Unsigned executable
+## Architecture
+
+| Directory | Responsibility |
+| --- | --- |
+| `collectors/` | System, processes, executable files, Authenticode and memory-map collection |
+| `acquisition/` | Snapshot orchestration, persistence, loading and collector summaries |
+| `analysis/` | Snapshot process relationships and basic PE header parsing |
+| `web/` | FastAPI routes, dashboard and static assets |
+| `cli/` and `main.py` | Interactive CLI backed by shared acquisition |
+| `evidence/` | Local snapshots; evidence contents are excluded from Git tracking |
+| `tests/` | Regression tests and optional native Windows collector checks |
+
+## Validation
+
+```powershell
+.\venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-alone as malware.
+If Node.js is installed, also run `node tests/test_frontend.js` to check rendering, escaping, connection failure handling and page-reload recovery.
 
-Future detection logic will therefore emphasize **correlation, confidence, context, and explainable findings**.
+Most regression tests isolate operating-system calls with mocks. Native Windows tests additionally exercise Windows PowerShell signatures and the current process's memory maps; they are skipped on other systems. Passing mocked tests does not establish native Windows coverage or collection performance.
 
----
+## Roadmap and analysis philosophy
 
-## Project Status
+See [ROADMAP.md](ROADMAP.md) for implemented and planned features. Future analysis should correlate evidence with context and confidence. An unsigned file alone is not proof of malware. Network/registry/event acquisition, findings, timelines and ML are future work.
 
-Endpoint Forensics is currently under active development.
+## Privacy, use and licensing
 
-The current versions primarily focus on building the acquisition layer and establishing the evidence model required for future behavioral analysis and timeline correlation.
+The application binds to localhost in the documented commands and contains no cloud analysis API integration. Windows handles Authenticode verification using its configured trust mechanisms. The dashboard has no authentication and is intended for local use.
 
-Expect significant changes as additional collectors and analysis modules are introduced.
+Snapshots contain sensitive process paths, usernames and command lines. Collect only on systems you own or are explicitly authorized to investigate. The tool is intended for education, defensive research and endpoint investigation; it does not currently provide forensic chain-of-custody guarantees.
 
----
-
-## Disclaimer
-
-This project is intended for:
-
-- Cybersecurity education
-- Defensive security research
-- Digital forensics experimentation
-- Endpoint investigation
-- Controlled laboratory environments
-
-Use the tool only on systems that you own or are explicitly authorized to analyze.
-
----
-
-## Author
-
-Developed as a cybersecurity and systems engineering project focused on Windows endpoint forensics, DFIR concepts, and defensive security engineering.
+A redistribution license has not yet been selected; the repository does not currently contain a `LICENSE` file.

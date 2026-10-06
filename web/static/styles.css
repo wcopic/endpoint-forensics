@@ -600,3 +600,18 @@ button:disabled {
 
     margin-bottom: 4px;
 }
+
+.evidence-warnings:not(:empty) {
+    padding: 12px;
+    margin-bottom: 16px;
+    border: 1px solid #a5833b;
+    border-radius: 8px;
+    color: #e8cd94;
+    overflow-wrap: anywhere;
+}
+
+.mapped-file {
+    padding: 6px 0;
+    overflow-wrap: anywhere;
+    font-family: monospace;
+}

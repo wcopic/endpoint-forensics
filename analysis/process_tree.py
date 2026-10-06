@@ -1,74 +1,60 @@
+def _parent_for(process, process_map):
+    """Resolve only plausible parents present in this snapshot."""
+    parent_pid = process.get("parent_pid")
+    if parent_pid in (None, 0, process["pid"]):
+        return None
+    parent = process_map.get(parent_pid)
+    if parent is None:
+        return None
+    parent_created = parent.get("create_time")
+    child_created = process.get("create_time")
+    if parent_created is not None and child_created is not None:
+        if parent_created > child_created:
+            # The original parent exited and Windows reused its PID.
+            return None
+    return parent
+
+
 def build_process_tree(processes):
-    process_map = {
-        process["pid"]: process
-        for process in processes
-    }
-
+    process_map = {process["pid"]: process for process in processes}
     children = {}
-
     for process in processes:
-        pid = process["pid"]
-        ppid = process["parent_pid"]
-
-        if ppid not in children:
-            children[ppid] = []
-
-        children[ppid].append(pid)
-
+        parent = _parent_for(process, process_map)
+        if parent is not None:
+            children.setdefault(parent["pid"], []).append(process["pid"])
     return process_map, children
 
 
-def print_process_tree(pid, process_map, children, level=0):
+def print_process_tree(pid, process_map, children, level=0, visited=None):
+    visited = set() if visited is None else visited
     process = process_map.get(pid)
-
-    if not process:
+    if process is None or pid in visited:
         return
-
-    indent = "    " * level
-
-    print(
-        f"{indent}└── "
-        f"{process['name']} "
-        f"(PID: {process['pid']})"
-    )
-
+    visited.add(pid)
+    print(f"{'    ' * level}└── {process['name']} (PID: {pid})")
     for child_pid in children.get(pid, []):
-        print_process_tree(
-            child_pid,
-            process_map,
-            children,
-            level + 1
-        )
+        print_process_tree(child_pid, process_map, children, level + 1, visited)
+
 
 def get_process_details(pid, process_map, children):
     process = process_map.get(pid)
-
-    if not process:
+    if process is None:
         return None
-
-    parent = process_map.get(process["parent_pid"])
-
-    child_processes = [
-        process_map[child_pid]
-        for child_pid in children.get(pid, [])
-        if child_pid in process_map
-    ]
-
     return {
         "process": process,
-        "parent": parent,
-        "children": child_processes
+        "parent": _parent_for(process, process_map),
+        "children": [process_map[child] for child in children.get(pid, [])
+                     if child in process_map],
     }
 
+
 def get_process_ancestors(pid, process_map):
+    """Return the selected process followed by its ancestors, once each."""
     ancestors = []
-
+    visited = set()
     current = process_map.get(pid)
-
-    while current:
+    while current is not None and current["pid"] not in visited:
+        visited.add(current["pid"])
         ancestors.append(current)
-
-        parent_pid = current["parent_pid"]
-        current = process_map.get(parent_pid)
-
+        current = _parent_for(current, process_map)
     return ancestors

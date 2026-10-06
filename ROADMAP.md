@@ -1,112 +1,93 @@
-# Endpoint Forensics
+# Endpoint Forensics Roadmap
 
-Endpoint Forensics is an open-source, local-first Windows security auditing and DFIR tool designed to collect, correlate, and visualize endpoint activity.
+Endpoint Forensics currently collects and displays local Windows process and executable evidence. The milestones below describe feature scope, not published release guarantees. Checked items are implemented; collection remains best effort.
 
-The goal is to provide detailed information about processes, files, network connections, Windows Registry changes, security events, and other endpoint activity through a simple local interface.
+## v0.0.1 — Initial Process Collection
 
-The project should remain:
+- [x] System information and running process collection
+- [x] Snapshot process tree and parent/child navigation
+- [x] JSON evidence persistence
+- [x] Interactive CLI
 
-* **Free and open source**
-* **Local-first** — no cloud or external services required
-* **Privacy-conscious** — endpoint evidence stays on the user's machine
-* **Modular** — collectors and analysis components remain separated
-* **Usable** — eventually accessible through a localhost web interface
+## v0.0.2 — Process Context (partially implemented)
 
----
+- [x] Snapshot ancestry traversal with cycle protection
+- [x] Process creation and snapshot observation timestamps
+- [x] Command-line arguments, executable path and username
+- [x] Reject candidate parents created after the child
+- [ ] Process session IDs
+- [ ] Security token, integrity level and elevation context
+- [ ] Process termination events and lifetime tracking
+- [ ] Historical ancestry across observations, with verified process identities
 
-## Roadmap
+## v0.0.3 — Executable and Extended Acquisition
 
-### v0.0.1 — Initial Process Collection ✅
+- [x] File size, timestamps and SHA-256; report inaccessible/missing files
+- [x] Basic PE header metadata with lightweight parsing
+- [x] Extended-mode Authenticode status and signer certificate fields
+- [x] Extended-mode process memory-mapped file paths
+- [x] Verify process creation time before and after memory-map collection
+- [x] Persist collector statuses and acquisition metadata
+- [x] Display signature and mapped-file evidence in the dashboard
+- [x] Shared CLI/web acquisition, including Extended mode and snapshot loading
+- [ ] Identify image/DLL mappings separately from other mapped files
+- [ ] Hash, signature and PE analysis of mapped files
+- [ ] Stronger executable identity consistency across file metadata/hash/signature reads
+- [ ] Evidence integrity manifest and chain-of-custody support
+- [ ] Reproducible Windows benchmarks and broader native Windows validation
 
-* System information collection
-* Running process collection
-* Process tree
-* Parent/child relationships
-* Basic process investigation
-* JSON evidence snapshots
-* CLI interface
+## v0.0.4 — Network and File Activity
 
-### v0.0.2 — Process Intelligence ✅
+- [ ] Active TCP/UDP connections and local/remote endpoints
+- [ ] Process-to-network correlation
+- [ ] DNS activity from a defined telemetry source
+- [ ] File creation/modification/deletion events
+- [ ] Process-to-file correlation
 
-* Process ancestry
-* Better timestamps and process lifetime
-* Command-line arguments
-* Process sessions and security context
-* More detailed process metadata
+Connection snapshots and file/DNS event monitoring need separate collectors and explicit coverage limits.
 
-### v0.0.3 — Executable Analysis ✅
+## v0.0.5 — Windows Registry and Persistence
 
-* File size and timestamps
-* SHA-256 hashes
-* PE metadata
-* Digital signatures
-* Certificate and publisher information
-* Loaded modules / DLLs
+- [ ] Registry Run keys and startup folders
+- [ ] Windows services and scheduled tasks
+- [ ] Registry change telemetry
+- [ ] Process-to-registry correlation
 
-### v0.0.4 — Network & File Activity
+## v0.0.6 — Windows Security Events
 
-* Active TCP/UDP connections
-* Local and remote endpoints
-* DNS activity
-* File creation/modification/deletion
-* Process-to-network correlation
-* Process-to-file correlation
+- [ ] Event Log collection with documented audit prerequisites
+- [ ] Process creation, logon, failed-logon and security events
+- [ ] Event/process correlation
 
-### v0.0.5 — Windows Registry & Persistence
+## v0.0.7 — Sysmon Integration
 
-* Registry changes
-* Registry Run keys
-* Startup folders
-* Services
-* Scheduled tasks
-* Process-to-registry correlation
+- [ ] Optional Sysmon telemetry import with configuration prerequisites
+- [ ] Process creation and image/DLL loading
+- [ ] Network, DNS, file, registry and process-access events
 
-### v0.0.6 — Windows Security Events
+## v0.0.8 — Timeline and Correlation
 
-* Windows Event Log collection
-* Process creation events
-* Logon events
-* Failed logons
-* Security-related events
-* Event/process correlation
+- [ ] Unified timeline with source-specific timestamps
+- [ ] Cross-source process, file, network and registry relationships
+- [ ] Explainable behavioral indicators
+- [ ] Findings with severity, confidence and supporting evidence
+- [ ] Suspicious command-line and LOLBin analysis with contextual checks
 
-### v0.0.7 — Sysmon Integration
+## v0.1.0 — Expanded Local Dashboard
 
-* Process creation
-* Network connections
-* Image/DLL loading
-* Process access
-* Registry activity
-* File activity
-* DNS activity
-* Other relevant Sysmon telemetry
+- [x] Localhost dashboard and process explorer
+- [x] Snapshot selection and parent/child navigation
+- [x] Executable, certificate and mapped-file views
+- [x] Partial-collection warnings and progress recovery after page reload
+- [ ] Search and filtering
+- [ ] Interactive tree visualization
+- [ ] Network, registry and file activity views
+- [ ] Timeline, findings and investigation summaries
 
-### v0.0.8 — Timeline & Correlation
+## v0.2.0 — Machine Learning Research (long term, scope TBD)
 
-* Unified endpoint timeline
-* Cross-source event correlation
-* Process ancestry + network + file + registry relationships
-* Investigation context
-* Evidence-based findings
+- [ ] Define a task that benefits from a model and a baseline to compare against
+- [ ] Establish representative, labeled data and evaluation criteria
+- [ ] Assess false positives, explanations and local resource requirements
 
-### v0.1.0 — Complete Local Web Dashboard 🚀
-
-* Localhost web interface
-* Process explorer
-* Search and filtering
-* Process investigation pages
-* Interactive process trees
-* Network activity visualization
-* Registry/file activity
-* Timeline
-* Findings and investigation summaries
-
-### v0.2.0 — Machine Learning Model 
-
-* (Long term goal - TBD)
-  
----
-
-## Long-Term Goal
-
-Build a lightweight, open-source Windows endpoint investigation platform that helps users understand **what happened on a machine, which processes were involved, what they interacted with, and when those events occurred** — without requiring cloud infrastructure or paid services.
+The goal is an accessible local investigation tool that helps explain endpoint activity through evidence and context. Malware classification is not a current capability. A repository license remains to be selected by the author.
