@@ -615,3 +615,15 @@ button:disabled {
     overflow-wrap: anywhere;
     font-family: monospace;
 }
+
+.completion-content {
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+}
+
+.completion-content h2 { margin: 0; }
+.completion-issues { padding-left: 22px; }
+.completion-issues li { margin: 10px 0; overflow-wrap: anywhere; }
+.completion-content details { margin-top: 18px; }
+.completion-content summary { cursor: pointer; }
+.completion-process { margin: 12px 0; overflow-wrap: anywhere; }

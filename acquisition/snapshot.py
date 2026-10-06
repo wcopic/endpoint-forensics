@@ -14,6 +14,7 @@ from collectors.signatures import collect_signatures
 from collectors.modules import collect_loaded_modules
 from analysis.process_tree import build_process_tree
 from analysis.pe import analyze_pe
+from analysis.collection_summary import collection_summary
 
 
 EVIDENCE_DIR = Path(__file__).resolve().parents[1] / "evidence"
@@ -41,6 +42,7 @@ def _assemble(path, system, processes, executables, modules, metadata):
         "evidence_path": str(path),
         "captured_at": metadata.get("captured_at"),
         "metadata": metadata,
+        "collection_summary": collection_summary(processes, executables, modules),
         "system": system, "processes": processes, "executables": executables,
         "process_map": process_map, "children": children,
         "executable_map": {item["path"].lower(): item for item in executables},

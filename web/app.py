@@ -129,6 +129,8 @@ def get_processes():
     return {
         "processes": snapshot["processes"], "executable_count": len(snapshot["executables"]),
         "captured_at": snapshot["captured_at"], "metadata": snapshot["metadata"],
+        "snapshot_name": Path(snapshot["evidence_path"]).name,
+        "collection_summary": snapshot["collection_summary"],
     }
 
 

@@ -88,7 +88,9 @@ No reproducible Windows benchmark is currently published. Duration varies with p
 2. Wait for completion; progress percentages represent stages, not an estimate of remaining time.
 3. Select a recorded process to inspect executable metadata, signatures and mapped files.
 4. Follow parent/child links within that snapshot.
-5. Review any partial-collection warnings and per-record statuses.
+5. Review the completion popup. When data is unavailable, it lists the missing fields, affected process counts, and expandable per-process details. The generic collection warnings are no longer displayed in the header. Per-record statuses remain available in the process details and JSON evidence.
+
+The popup appears once when a new acquisition completes (including after reconnecting to an acquisition that is still running). Opening an already completed snapshot or importing old evidence does not display it again.
 
 The process list describes the saved observation, not a live-updating process monitor. Importing evidence is blocked while an acquisition is running. Reloading the page reconnects to a running acquisition on the same server.
 

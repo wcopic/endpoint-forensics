@@ -11,7 +11,9 @@ const document = {
     getElementById(id) {
         if (!elements.has(id)) {
             elements.set(id, {disabled: false, checked: false, textContent: "", style: {},
-                classList: {add() {}, remove() {}}, addEventListener() {}});
+                classList: {visible: false,
+                    add() {this.visible = true;}, remove() {this.visible = false;}},
+                addEventListener() {}, focus() {document.activeElement = this;}});
         }
         return elements.get(id);
     },
@@ -63,6 +65,33 @@ async function run() {
     await callbacks.get("DOMContentLoaded")();
     assert.equal(elements.get("analyzeButton").disabled, true);
     assert(intervals > 0, "Reload must resume status polling");
-    console.log("Frontend regression checks passed: rendering, escaping, failures, and reload recovery.");
+    const summary = {total_processes: 2, affected_process_count: 1,
+        issues: [{label: "Command line", process_count: 1}],
+        affected_processes: [{pid: 10, name: dangerous, missing: ["Command line"]}]};
+    html = context.renderCompletionIssues(summary);
+    assert(html.includes("Command line"));
+    assert(html.includes("PID 10"));
+    assert(!html.includes("<img"));
+    assert.equal(context.renderCompletionIssues({affected_process_count: 0}), "");
+    const snapshot = {snapshot_name: "new-snapshot", collection_summary: summary,
+        processes: [], executable_count: 0, captured_at: null,
+        metadata: {warnings: ["processes: incomplete collection; inspect record statuses."]}};
+    context.fetch = async url => ({ok: true, json: async () => url === "/api/status"
+        ? {status: "complete", stage: "Acquisition complete", progress: 100} : snapshot});
+    await context.updateStatus();
+    assert(elements.get("completionModal").classList.visible);
+    assert(elements.get("completionMessage").textContent.includes("1 of 2"));
+    assert.equal(elements.get("evidenceWarnings").textContent, "");
+    context.closeCompletionNotice();
+    await context.updateStatus();
+    assert.equal(elements.get("completionModal").classList.visible, false, "Polling must not reopen the popup");
+    await context.loadProcesses();
+    assert.equal(elements.get("completionModal").classList.visible, false, "Import/initial load must not reopen the popup");
+    context.showCompletionNotice(snapshot);
+    assert.equal(elements.get("completionModal").classList.visible, false, "The same snapshot cannot reopen the popup");
+    context.showCompletionNotice({...snapshot, snapshot_name: "clean-snapshot", collection_summary: {affected_process_count: 0}});
+    assert(elements.get("completionModal").classList.visible);
+    assert(!elements.get("completionMessage").textContent.includes("However"));
+    console.log("Frontend regression checks passed, including completion popup, missing fields, escaping, and no duplicate notices.");
 }
 run().catch(error => {console.error(error); process.exitCode = 1;});

@@ -95,6 +95,65 @@ const deepAnalysisCheckbox =
 let selectedEvidence = null;
 
 let pollingInterval = null;
+let awaitingCompletion = false;
+let lastCompletionSnapshot = null;
+let completionPreviousFocus = null;
+const completionModal = document.getElementById("completionModal");
+const completionCloseButton = document.getElementById("closeCompletionButton");
+const completionAcknowledgeButton = document.getElementById("acknowledgeCompletionButton");
+
+function closeCompletionNotice() {
+    completionModal.classList.remove("visible");
+    if (completionPreviousFocus?.focus) completionPreviousFocus.focus();
+}
+
+completionCloseButton.addEventListener("click", closeCompletionNotice);
+completionAcknowledgeButton.addEventListener("click", closeCompletionNotice);
+completionModal.addEventListener("click", event => {
+    if (event.target === completionModal) closeCompletionNotice();
+});
+completionModal.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeCompletionNotice();
+    if (event.key === "Tab") {
+        const controls = Array.from(completionModal.querySelectorAll("button, summary, [tabindex='0']"));
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+});
+
+function showCompletionNotice(data) {
+    if (!data || !data.snapshot_name || lastCompletionSnapshot === data.snapshot_name) return;
+    lastCompletionSnapshot = data.snapshot_name;
+    const summary = data.collection_summary;
+    const count = summary?.affected_process_count || 0;
+    const message = count > 0
+        ? `The analysis completed and the available evidence was saved. However, some data could not be collected for ${count} of ${summary.total_processes} recorded processes.`
+        : "The analysis completed and the available evidence was saved.";
+    document.getElementById("completionMessage").textContent = message;
+    document.getElementById("completionIssues").innerHTML = renderCompletionIssues(summary);
+    completionPreviousFocus = document.activeElement;
+    completionModal.classList.add("visible");
+    completionAcknowledgeButton.focus();
+}
+
+function renderCompletionIssues(summary) {
+    if (!summary?.affected_process_count) return "";
+    const issues = summary.issues.map(issue =>
+        `<li><strong>${escapeHtml(issue.label)}</strong>: ${escapeHtml(issue.process_count)} process(es)</li>`).join("");
+    const processes = summary.affected_processes.map(process =>
+        `<div class="completion-process"><strong>${escapeHtml(process.name || "Unknown process")} (PID ${escapeHtml(process.pid)})</strong>
+        <div class="subtitle">Unavailable: ${escapeHtml(process.missing.join(", "))}</div></div>`).join("");
+    return `<ul class="completion-issues">${issues}</ul>
+        <p class="subtitle">Unavailable data can result from access restrictions, processes exiting during collection, or collector errors. The collected evidence remains available.</p>
+        <details><summary>View affected processes</summary>${processes}</details>`;
+}
 
 
 /* =========================
@@ -167,6 +226,8 @@ function beginPolling() {
 
 async function startAnalysis() {
     setBusy(true);
+    closeCompletionNotice();
+    awaitingCompletion = false;
     progressContainer.style.display = "block";
     updateProgress("Starting acquisition", 0);
     document.getElementById("evidenceWarnings").textContent = "";
@@ -180,11 +241,13 @@ async function startAnalysis() {
             const error = await response.json();
             throw new Error(error.detail || "Failed to start acquisition.");
         }
+        awaitingCompletion = true;
         beginPolling();
         await updateStatus();
     } catch (error) {
         stopPolling();
         setBusy(false);
+        awaitingCompletion = false;
         alert(error.message);
     }
 }
@@ -450,8 +513,15 @@ async function updateStatus() {
         } else {
             stopPolling();
             setBusy(false);
-            if (status.status === "complete") await loadProcesses();
+            if (status.status === "complete") {
+                const data = await loadProcesses();
+                if (awaitingCompletion && data) {
+                    awaitingCompletion = false;
+                    showCompletionNotice(data);
+                }
+            }
             if (status.status === "error") {
+                awaitingCompletion = false;
                 alert("Acquisition failed:\n\n" + status.error);
             }
         }
@@ -503,8 +573,7 @@ async function loadProcesses() {
     const data =
         await response.json();
 
-    const warnings = data.metadata?.warnings || [];
-    document.getElementById("evidenceWarnings").textContent = warnings.join(" ");
+    document.getElementById("evidenceWarnings").textContent = "";
 
     document.getElementById(
         "processCount"
@@ -614,6 +683,7 @@ async function loadProcesses() {
             );
         }
     );
+    return data;
 }
 
 
@@ -1289,6 +1359,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         updateProgress(status.stage, status.progress);
         await loadProcesses();
         if (status.status === "running") {
+            awaitingCompletion = true;
             setBusy(true);
             progressContainer.style.display = "block";
             beginPolling();
