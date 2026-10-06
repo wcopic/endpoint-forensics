@@ -148,54 +148,45 @@ confirmAnalysisButton.addEventListener(
     }
 );
 
+function setBusy(busy) {
+    analyzeButton.disabled = busy;
+    importButton.disabled = busy;
+    confirmAnalysisButton.disabled = busy;
+    if (busy) confirmImportButton.disabled = true;
+}
+
+function stopPolling() {
+    clearInterval(pollingInterval);
+    pollingInterval = null;
+}
+
+function beginPolling() {
+    stopPolling();
+    pollingInterval = setInterval(updateStatus, 500);
+}
+
 async function startAnalysis() {
-
-    analyzeButton.disabled = true;
-
-    progressContainer.style.display =
-        "block";
-
-
-    const deepAnalysis =
-        deepAnalysisCheckbox.checked;
-
-
-    const response =
-        await fetch(
-            "/api/analyze",
-            {
-                method: "POST",
-
-                headers: {
-                    "Content-Type":
-                        "application/json"
-                },
-
-                body: JSON.stringify({
-                    deep_analysis:
-                        deepAnalysis
-                })
-            }
-        );
-
-
-    if (!response.ok) {
-
-        alert(
-            "Failed to start analysis."
-        );
-
-        analyzeButton.disabled = false;
-
-        return;
+    setBusy(true);
+    progressContainer.style.display = "block";
+    updateProgress("Starting acquisition", 0);
+    document.getElementById("evidenceWarnings").textContent = "";
+    try {
+        const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({deep_analysis: deepAnalysisCheckbox.checked})
+        });
+        if (!response.ok && response.status !== 409) {
+            const error = await response.json();
+            throw new Error(error.detail || "Failed to start acquisition.");
+        }
+        beginPolling();
+        await updateStatus();
+    } catch (error) {
+        stopPolling();
+        setBusy(false);
+        alert(error.message);
     }
-
-
-    pollingInterval =
-        setInterval(
-            updateStatus,
-            500
-        );
 }
 
 /* =========================
@@ -448,70 +439,30 @@ async function importSelectedEvidence() {
 
 
 async function updateStatus() {
-
     try {
-
-        const response =
-            await fetch(
-                "/api/status"
-            );
-
-
-        const status =
-            await response.json();
-
-
-        updateProgress(
-            status.stage,
-            status.progress
-        );
-
-
-        if (
-            status.status ===
-            "complete"
-        ) {
-
-            clearInterval(
-                pollingInterval
-            );
-
-
-            analyzeButton.disabled =
-                false;
-
-
-            await loadProcesses();
+        const response = await fetch("/api/status");
+        if (!response.ok) throw new Error("Could not read acquisition status.");
+        const status = await response.json();
+        updateProgress(status.stage, status.progress);
+        if (status.status === "running") {
+            setBusy(true);
+            progressContainer.style.display = "block";
+        } else {
+            stopPolling();
+            setBusy(false);
+            if (status.status === "complete") await loadProcesses();
+            if (status.status === "error") {
+                alert("Acquisition failed:\n\n" + status.error);
+            }
         }
-
-
-        if (
-            status.status ===
-            "error"
-        ) {
-
-            clearInterval(
-                pollingInterval
-            );
-
-
-            analyzeButton.disabled =
-                false;
-
-
-            alert(
-                "Analysis failed:\n\n" +
-                status.error
-            );
-        }
-
-
     } catch (error) {
-
+        stopPolling();
+        setBusy(false);
+        document.getElementById("evidenceWarnings").textContent =
+            "Connection interrupted. Reload this page to reconnect to the acquisition.";
         console.error(error);
     }
 }
-
 
 function updateProgress(
     stage,
@@ -552,6 +503,8 @@ async function loadProcesses() {
     const data =
         await response.json();
 
+    const warnings = data.metadata?.warnings || [];
+    document.getElementById("evidenceWarnings").textContent = warnings.join(" ");
 
     document.getElementById(
         "processCount"
@@ -811,7 +764,7 @@ function renderProcessDetails(
 
             ${detailRow(
                 "Created",
-                process.create_time
+                formatTimestamp(process.create_time)
             )}
 
 
@@ -825,6 +778,10 @@ function renderProcessDetails(
 
         </div>
 
+
+        ${process.collection_status === "partial" ?
+            `<div class="subtitle">Some process fields are unavailable:
+            ${escapeHtml((process.unavailable_fields || []).join(", "))}</div>` : ""}
 
         <div class="detail-section">
 
@@ -918,7 +875,31 @@ function renderProcessDetails(
 
         </div>
 
+        ${renderModuleRecord(data.module_record, data.analysis_mode)}
+
     `;
+}
+
+function renderModuleRecord(record, mode) {
+    if (!record) {
+        return `<div class="detail-section"><h3>Memory-Mapped Files</h3>
+            <div class="subtitle">${mode === "quick"
+                ? "Mapped files were not requested in this Quick snapshot."
+                : "No module record is available for this process."}</div></div>`;
+    }
+    const status = record.collection_status || "legacy_unknown";
+    const notice = status === "legacy_unknown"
+        ? "Legacy evidence: collection completeness and process identity were not verified."
+        : (record.error || "");
+    const paths = (record.modules || []).map(module =>
+        `<div class="mapped-file">${escapeHtml(module.path)}</div>`).join("");
+    return `<div class="detail-section"><h3>Memory-Mapped Files</h3>
+        ${detailRow("Collection", escapeHtml(status))}
+        ${notice ? `<div class="subtitle">${escapeHtml(notice)}</div>` : ""}
+        ${paths || `<div class="subtitle">${status === "collected"
+            ? "Collection succeeded; no mapped file paths were returned."
+            : "No paths available; this does not establish absence of mapped files."}</div>`}
+        </div>`;
 }
 
 
@@ -1030,6 +1011,9 @@ function renderExecutable(
         )}
 
 
+        ${detailRow("Collection", escapeHtml(executable.collection_status || "legacy_unknown"))}
+        ${executable.error ? `<div class="subtitle">${escapeHtml(executable.error)}</div>` : ""}
+
         ${detailRow(
             "SHA-256",
             escapeHtml(
@@ -1041,19 +1025,19 @@ function renderExecutable(
 
         ${detailRow(
             "Size",
-            `${executable.size} bytes`
+            executable.size == null ? "Unavailable" : escapeHtml(`${executable.size} bytes`)
         )}
 
 
         ${detailRow(
             "Created",
-            executable.created_time
+            formatTimestamp(executable.created_time)
         )}
 
 
         ${detailRow(
             "Modified",
-            executable.modified_time
+            formatTimestamp(executable.modified_time)
         )}
 
 
@@ -1113,9 +1097,11 @@ function renderExecutable(
                 signature
 
                 ? `
-
+                    ${detailRow("Collection", escapeHtml(signature.collection_status || "legacy_unknown"))}
+                    ${signature.error ? `<div class="subtitle">${escapeHtml(signature.error)}</div>` : ""}
+                    ${signature.status_message ? detailRow("Status message", escapeHtml(signature.status_message)) : ""}
                     ${detailRow(
-                        "Status",
+                        "Authenticode status",
                         escapeHtml(
                             signature.status ||
                             "Unknown"
@@ -1181,7 +1167,7 @@ function renderExecutable(
                 : `
                     <div class="subtitle">
                         Digital signature data unavailable.
-                        Run a Full Endpoint Analysis to collect it.
+                        Not collected in Quick acquisition or unavailable in legacy evidence. Use Extended acquisition to request it.
                     </div>
                 `
             }
@@ -1289,49 +1275,25 @@ function escapeHtml(
         );
 }
 
-document.addEventListener(
-    "DOMContentLoaded",
-    async () => {
+function formatTimestamp(seconds) {
+    if (typeof seconds !== "number" || !Number.isFinite(seconds)) return "Unavailable";
+    const date = new Date(seconds * 1000);
+    return Number.isNaN(date.getTime()) ? "Unavailable" : escapeHtml(date.toLocaleString());
+}
 
-        try {
-
-            const response =
-                await fetch(
-                    "/api/status"
-                );
-
-            if (!response.ok) {
-                return;
-            }
-
-            const status =
-                await response.json();
-
-
-            updateProgress(
-                status.stage,
-                status.progress
-            );
-
-
-            if (
-                status.status ===
-                "complete"
-            ) {
-
-                analyzeButton.disabled =
-                    false;
-
-                await loadProcesses();
-            }
-
-
-        } catch (error) {
-
-            console.error(
-                "Failed to restore previous analysis:",
-                error
-            );
+document.addEventListener("DOMContentLoaded", async () => {
+    try {
+        const response = await fetch("/api/status");
+        if (!response.ok) throw new Error("Could not restore acquisition status.");
+        const status = await response.json();
+        updateProgress(status.stage, status.progress);
+        await loadProcesses();
+        if (status.status === "running") {
+            setBusy(true);
+            progressContainer.style.display = "block";
+            beginPolling();
         }
+    } catch (error) {
+        console.error("Failed to restore previous evidence:", error);
     }
-);
+});

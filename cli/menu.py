@@ -19,17 +19,17 @@ def display_process_details(details, ancestors):
     print("              PROCESS DETAILS")
     print("=" * 50)
 
-    print(f"\nName:        {process['name']}")
-    print(f"PID:         {process['pid']}")
-    print(f"Parent PID:  {process['parent_pid']}")
-    print(f"Path:        {process['path']}")
-    print(f"User:        {process['username']}")
-    print(f"Created:     {process['create_time']}")
+    print(f"\nName:        {process.get('name', 'Unknown')}")
+    print(f"PID:         {process.get('pid', 'Unknown')}")
+    print(f"Parent PID:  {process.get('parent_pid', 'Unknown')}")
+    print(f"Path:        {process.get('path', 'Unknown')}")
+    print(f"User:        {process.get('username', 'Unknown')}")
+    print(f"Created:     {process.get('create_time', 'Unknown')}")
 
-    print(f"Observed:     {process['observed_at']}")  
+    print(f"Observed:     {process.get('observed_at', 'Unknown')}")
 
-    print(f"Command line: {process['command_line']}")
-    
+    print(f"Command line: {process.get('command_line', 'Unknown')}")
+
 
     print("\nParent:")
 

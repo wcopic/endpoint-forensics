@@ -31,6 +31,14 @@ def collect_processes(observed_at=None):
                 "create_time": info["create_time"],
                 "command_line": info["cmdline"],
                 "observed_at": observed_at,
+                "collection_status": "partial" if any(
+                    info.get(field) is None
+                    for field in ("ppid", "name", "exe", "username", "create_time", "cmdline")
+                ) else "collected",
+                "unavailable_fields": [
+                    field for field in ("ppid", "name", "exe", "username", "create_time", "cmdline")
+                    if info.get(field) is None
+                ],
             })
 
         except (psutil.NoSuchProcess, psutil.AccessDenied):

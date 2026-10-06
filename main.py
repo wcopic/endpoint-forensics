@@ -1,148 +1,59 @@
-import json
-from datetime import datetime
-from pathlib import Path
+import argparse
 
-from collectors.system import collect_system_info
-from collectors.processes import collect_processes
-
-from collectors.executables import collect_executables
-from analysis.pe import analyze_pe
-
-from analysis.process_tree import (
-    build_process_tree,
-    print_process_tree,
-    get_process_details,
-    get_process_ancestors
-)
-
-from cli.menu import (
-    show_menu,
-    display_process_details
-)
-
-
-def create_evidence_directory():
-    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    path = Path("evidence") / timestamp
-    path.mkdir(parents=True, exist_ok=True)
-
-    return path
+from acquisition.snapshot import capture_snapshot, load_snapshot
+from analysis.process_tree import print_process_tree, get_process_details, get_process_ancestors
+from cli.menu import show_menu, display_process_details
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Collect or inspect local endpoint evidence.")
+    options = parser.add_mutually_exclusive_group()
+    options.add_argument("--deep-analysis", action="store_true",
+                         help="Also collect Authenticode signatures and mapped file paths.")
+    options.add_argument("--load", metavar="DIRECTORY", help="Load a previous evidence directory.")
+    args = parser.parse_args()
     print("=" * 50)
-    print("       ENDPOINT FORENSICS v0.0.1")
+    print("       ENDPOINT FORENSICS — CLI")
     print("=" * 50)
-
-    evidence_path = create_evidence_directory()
-
-    print("\n[+] Collecting system information...")
-    system_info = collect_system_info()
-
-    print("[+] Collecting running processes...")
-    processes = collect_processes()
-
-    process_map, children = build_process_tree(processes)
-
-    executables = collect_executables(processes)
-
-    for executable in executables:
-        executable["pe"] = analyze_pe(
-            executable["path"]
-        )
-
-    with open(
-        evidence_path / "executables.json",
-        "w",
-        encoding="utf-8"
-    ) as file:
-        json.dump(executables, file, indent=4)
-
-    # Save system information
-    with open(
-        evidence_path / "system.json",
-        "w",
-        encoding="utf-8"
-    ) as file:
-        json.dump(system_info, file, indent=4)
-
-    # Save process information
-    with open(
-        evidence_path / "processes.json",
-        "w",
-        encoding="utf-8"
-    ) as file:
-        json.dump(processes, file, indent=4)
-
-    print("\n" + "=" * 50)
-    print("COLLECTION COMPLETE")
-    print("=" * 50)
-
-    print(f"\nHostname: {system_info['hostname']}")
-    print(f"User: {system_info['username']}")
-    print(f"OS: {system_info['operating_system']}")
-    print(f"CPU cores: {system_info['cpu_count']}")
-    print(f"RAM: {system_info['memory_gb']} GB")
-    print(f"Processes found: {len(processes)}")
-
-    root_processes = [
-        process["pid"]
-        for process in processes
-        if process["parent_pid"] not in process_map
-    ]
-
-    print("\n[+] Evidence saved to:")
-    print(f"    {evidence_path}")
-
+    try:
+        snapshot = load_snapshot(args.load) if args.load else capture_snapshot(deep_analysis=args.deep_analysis)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        parser.exit(1, f"Acquisition/load failed: {error}\n")
+    system = snapshot["system"]
+    print(f"\nHostname: {system.get('hostname', 'Unknown')}")
+    print(f"User: {system.get('username', 'Unknown')}")
+    print(f"OS: {system.get('operating_system', 'Unknown')}")
+    print(f"Processes found: {len(snapshot['processes'])}")
+    print(f"Evidence: {snapshot['evidence_path']}")
+    for warning in snapshot["metadata"].get("warnings", []):
+        print(f"[!] {warning}")
+    process_map, children = snapshot["process_map"], snapshot["children"]
     while True:
-        option = show_menu()
-
+        try:
+            option = show_menu()
+        except (EOFError, KeyboardInterrupt):
+            print("\nExiting...")
+            break
         if option == "1":
-            print("\n[+] Process tree:\n")
-
-            for pid in root_processes:
-                print_process_tree(
-                    pid,
-                    process_map,
-                    children
-                )
-
+            visited = set()
+            child_pids = {pid for pids in children.values() for pid in pids}
+            roots = [pid for pid in process_map if pid not in child_pids]
+            # Also display disconnected/cyclic legacy records without looping.
+            for pid in roots + list(process_map):
+                print_process_tree(pid, process_map, children, visited=visited)
         elif option == "2":
             pid_input = input("\nEnter PID: ").strip()
-
             if not pid_input.isdigit():
                 print("\n[!] Invalid PID.")
                 continue
-
             pid = int(pid_input)
-
-            details = get_process_details(
-                pid,
-                process_map,
-                children
-            )
-
-            if not details:
-                print(
-                    f"\n[!] Process with PID {pid} "
-                    "not found."
-                )
+            details = get_process_details(pid, process_map, children)
+            if details is None:
+                print(f"\n[!] Process with PID {pid} not found.")
                 continue
-
-            ancestors = get_process_ancestors(
-                pid,
-                process_map
-            )
-
-            display_process_details(
-                details,
-                ancestors
-            )
-
+            display_process_details(details, get_process_ancestors(pid, process_map))
         elif option == "0":
-            print("\nExiting...")
             break
-
         else:
             print("\n[!] Invalid option.")
 
