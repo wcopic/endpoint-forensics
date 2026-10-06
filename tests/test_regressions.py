@@ -13,6 +13,7 @@ import psutil
 from fastapi.testclient import TestClient
 
 from acquisition import snapshot as snapshots
+from analysis.collection_summary import collection_summary
 from analysis.process_tree import build_process_tree, get_process_ancestors, get_process_details, print_process_tree
 from collectors.executables import collect_file_metadata
 from collectors.modules import collect_loaded_modules
@@ -37,6 +38,41 @@ def fixture(path, processes=None, modules=None, metadata=None):
     if metadata is not None:
         snapshots.save_json(path / "metadata.json", metadata)
     return path
+
+
+class CollectionNoticeTests(unittest.TestCase):
+    def test_shared_executable_failures_count_each_process_once(self):
+        processes = [process(10), process(11)]
+        executables = [{"path": "C:\\example.exe", "collection_status": "access_denied",
+                        "pe_collection_status": "unavailable",
+                        "signature": {"collection_status": "timeout", "status": None}}]
+        result = collection_summary(processes, executables, [])
+        self.assertEqual(result["affected_process_count"], 2)
+        self.assertTrue(all(issue["process_count"] == 2 for issue in result["issues"]))
+        self.assertEqual(len(result["affected_processes"][0]["missing"]), 4)
+
+    def test_exact_missing_process_fields_are_reported(self):
+        item = process()
+        item.update(collection_status="partial", unavailable_fields=["username", "cmdline"])
+        result = collection_summary([item], [], [])
+        self.assertEqual(result["affected_processes"][0]["missing"], ["Command line", "Username"])
+
+    def test_unsigned_and_successful_empty_modules_do_not_warn(self):
+        executable = {"path": "C:\\example.exe", "collection_status": "collected",
+                      "pe_collection_status": "collected",
+                      "signature": {"collection_status": "collected", "status": "NotSigned"}}
+        module = {"pid": 10, "create_time": 100.0, "collection_status": "collected", "modules": []}
+        self.assertEqual(collection_summary([process()], [executable], [module])["affected_process_count"], 0)
+
+    def test_unrequested_and_legacy_unknown_data_do_not_create_failures(self):
+        self.assertEqual(collection_summary([process()], [{"path": "C:\\example.exe"}], [])[
+            "affected_process_count"], 0)
+
+    def test_module_failure_matches_process_identity(self):
+        module = {"pid": 10, "create_time": 100.0, "collection_status": "pid_reused", "modules": []}
+        result = collection_summary([process()], [], [module])
+        self.assertEqual(result["issues"], [{"label": "Memory-mapped file paths", "process_count": 1}])
+        self.assertEqual(collection_summary([process(created=200.0)], [], [module])["affected_process_count"], 0)
 
 
 class RelationshipTests(unittest.TestCase):
